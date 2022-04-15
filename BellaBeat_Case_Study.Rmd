@@ -1,0 +1,255 @@
+---
+title: "BellaBeat Case Study"
+author: "Caitlin Malloch"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Case Study 2: BellaBeat
+
+## ![BellaBeat, founded in 2013 by Urška Sršen](images/BellaBeat_logo-01.png)
+
+## 1. Case Overview & Summary
+
+This case study is part of the Capstone Project for the Google Data Analytics Professional Certificate.
+
+BellaBeat was founded in 2013 as a women's health and fitness technology company. Their products are made for women to provide better tracking-technologies for health, wellness and fitness. BellaBeat consumers can use the information they record while using the apps and devices to assist in providing and advocating for overall better health.
+
+## 2. Ask: Business Task
+
+The owner of the company, Urška Sršen, wants an analysis of consumer trends to identify potential growth strategies. This will be done by analyzing smart device usage data from the BellaBeat tracker devices.
+
+The case study links to a dataset from FitBit Fitness Tracker Data, a data set of 30 FitBit users fitness tracker data. This dataset can be used to compare industry trends and what users of competitive technologies use their products for. This can be compared to the data from BellaBeat's product to determine the best growth opportunities.
+
+Stakeholders:
+
+\- Urška Sršen - Bellabeat co-founder and Chief Creative Officer
+
+\- Sando Mur - BellaBeat co- founder and key member of Bellabeat executive team
+
+\- Bellabeat Marketing Analytics team
+
+## 3. Prepare: Data Integrity
+
+### 3.1 Data set used:
+
+The dataset used during the analysis can be found on Kaggle through the user Mobius using [this link](https://www.kaggle.com/datasets/arashnic/fitbit).
+
+### 3.2 Accessibility and Data Privacy:
+
+The data is identified as open-source and has a usability rating of 10.00 identified by Kaggle, meaning there is a high level of documentation. The dataset is published under the CC0: Public Domain license. This data can be used freely for our analysis without asking for permission.
+
+### 3.3 Dataset Information, Verification and Organization
+
+The dataset downloads as a .zip file. Once unzipped, there are 18 .csv files. The following shows us metadata about the unzipped csv files.
+
+![The 12 files contain data obtained from 30 FitBit users who consented to sharing their data, including daily calorie intake, daily steps and weight logs.](images/List%20of%20csv%20files.png)
+
+### 3.4 Data Limitations
+
+The sample size provided by the 30 FitBit users is small and there is no data containing demographics and other factors that can give us a larger scale picture. Additionally, the data covers a limited period of time from a survey taken March - May 2016, so this may be out of date and more current data will be needed.
+
+## 4. Process: Data Cleaning & Manipulation
+
+### 4.1 Cleaning
+
+I will be using Microsoft SQL Server Management Studio to run SQL queries on the files under new tables, which I will then consolidate into one final table and create a new file with the cleaned data for analysis using R.
+
+I am new to data analytics and used the following YouTube tutorial to learn about SQL Data Exploration which covers some helpful tips for using Microsoft SQL Server Management Studio if you run into troubles uploading flat files: [Alex the Analyst, YouTube](https://www.youtube.com/watch?v=qfyynHBFOsM).
+
+![Upload all of the .csv files as flat file upload onto a new database, BellaBeat.](images/SQL%20Server%20List%20of%20Files.png)
+
+I double-check that the data has been imported properly into the tables by running a simple query to view the table. I'll reference the first table, dailyActivity_merged.
+
+![View the imported data with a simple query and check for any missing data with a quick scan.](images/View%20Imported%20Data%20in%20Table.png)
+
+Now it is time to clean the data in the tables. I will focus first on the daily data tables.
+
+![Check for redundancies by listing the columns that overlap in both tables and see if it returns anythig from the query results.](images/Check%20redundancies_cleaning.png)
+
+![Check for redundancies between similar column names, no return on query means it is clean.](images/Check%20redundancies_cleaning2.png)
+
+## 5. Analyze: Data Analysis
+
+Now that the files have been cleaned, it is time to analyze the data. I have chosen to use R, with RStudio.
+
+### 5.1 Load Library Packages in RStudio
+
+```{R}
+library(tidyverse)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+library (readr)
+```
+
+### 5.2 Condense Column Names to be used in R Script
+
+Thinking back to the business task, we want to find trends with users of the competitive FitBit trackers. There are *five* datasets I will focus on for my analysis:
+
+1.  dailyActivity_merged
+2.  dailyCalories_merged
+3.  dailyIntensities_merged
+4.  dailySteps_merged
+5.  SleepDay_merged
+
+Now, I will preview the tables to check that everything is running smoothly and the code is working as it should be.
+
+```{R}
+dailyAct <- read.csv(file='Google Case Study_BellaBeat/dailyActivity_merged.csv')
+```
+
+```{R}
+head(dailyActivity_merged) 
+str(dailyActivity_merged)
+
+head(dailyCalories_merged) 
+str(dailyCalories_merged)
+
+head(dailyIntensities_merged)
+str(dailyIntensities_merged)
+
+head(dailySteps_merged)
+str(dailySteps_merged)
+
+head(sleepDay_merged)
+str(sleepDay_merged)
+```
+
+```{R}
+dailyActivity_merged
+```
+
+The tibbles look great, so I can move forward with my analysis.
+
+Before we look at the data, it is important to define how FitBit classifies each level of activity. The general guideline is measured by means of output, or in this case, steps. Most devices in this industry follow the same [guidelines that can be found here](https://www.10000steps.org.au/articles/counting-steps/):
+
+-   Sedentary - Less than 5000 steps a day.
+-   Lightly active - Between 5000 and 7499 steps a day.
+-   Fairly active - Between 7500 and 9999 steps a day.
+-   Very active - More than 10000 steps a day.
+
+With that in mind, I want to create a table that will compile all of the daily averages of the 4 variables and see how that factors into level of activity.
+
+```{R}
+daily_activity_step1 <- merge(dailyActivity_merged, sleepDay_merged)
+daily_activity_step2 <- merge(daily_activity_step1, dailySteps_merged)
+daily_activity_step3 <- merge(daily_activity_step2, dailyCalories_merged)
+daily_activity_sleep <- merge(daily_activity_step3, dailyIntensities_merged)
+```
+
+We'll take a quick look at that new table, daily_activity_sleep.
+
+```{R}
+head(daily_activity_sleep)
+```
+
+An important analysis function will include looking at user averages for data such as mean daily steps, mean daily calories, and mean daily sleep. This is all data we can now pull from the consolidated daily_activity_sleep table.
+
+### 5.3 Plotting Daily Data Insights
+
+Using the Tidyverse function *ggplot*, I will create several charts with different data points found in the daily_activity_sleep table I created that houses all of the daily data records.
+
+#### 5.3.1 Sleep by Total Steps, Daily
+
+```{R}
+ggplot(data = daily_activity_sleep) +
+  geom_point (mapping= aes(x=TotalSteps, y=TotalMinutesAsleep, color= TotalSteps)) +
+  labs(title= "Sleep by Total Steps, Daily")
+
+```
+
+This graph is showing us a concentration of data points around 400-600 minutes asleep, or 7-10 hours. The standard recommendation is 8 hours of sleep per night, so we can look for any trends with regards to steps and quality of sleep. Though more data would need to be collected from a larger group of users, this graph highlights a trend of better quality sleep beginning around the 5,000 step mark. This is inline with conventional wisdom around better exercise equating better sleep.
+
+#### 5.3.2 Tracker Distance by Total Steps Taken, Daily
+
+```{R}
+ggplot(data = daily_activity_sleep) +
+  geom_point (mapping= aes(x=TotalSteps, y=TrackerDistance, color= TotalSteps))+
+  labs(title= "Tracker Distance by Total Steps Taken, Daily")
+```
+
+This graph is showing us that as distance increases, so do steps. This is common sense but it is important for users that want to increase their steps to recognize that distance is an important factor is achieving this goal.
+
+#### 5.3.3 Calories Burned by Total Steps Taken, Daily
+
+```{R}
+ggplot(data = daily_activity_sleep) +
+  geom_point (mapping= aes(x=StepTotal, y=Calories, color= StepTotal)) +
+  labs(title= "Calories Burned by Total Steps Taken")
+```
+
+Finally, this graph highlights total steps and calories burned which shows a positive correlation. We can conclude that as more steps are taken, more calories are burned. This means that users who are looking to increase steps will have the added benefit of burning more calories.
+
+#### 5.3.4 Count of Activities by Day
+
+```{R}
+daily_activity_sleep$Ymd <- mdy(daily_activity_sleep$ActivityDate)
+```
+
+```{R}
+daily_activity_sleep %>% count(Ymd, sort = TRUE) %>%
+ggplot() + geom_col(aes(x=Ymd, y=n)) +
+labs(title = "Count of Activities by Day", x="Date", y="Number of Activities")
+```
+
+#### 5.3.5 Total Steps by Day
+
+```{R}
+total_steps <- daily_activity_sleep %>% group_by(Ymd) %>%
+summarize(Steps = sum(TotalSteps, na.rm = TRUE), 
+          Mean = mean(TotalSteps, na.rm = TRUE))
+ggplot(total_steps) + geom_line(aes(x=Ymd, y=Steps)) +
+labs(title = "Total Steps by Day", x="Date", y="Total Steps")
+```
+
+#### 5.3.6 Average Steps by Day
+
+```{R}
+ggplot(total_steps) + geom_line(aes(x=Ymd, y=Mean)) +
+labs(title = "Average Steps by Day", x="Date", y="Average Steps")
+```
+
+#### 5.3.7 Total Distance by Day
+
+```{r}
+total_distance <- daily_activity_sleep %>% group_by(Ymd) %>%
+summarize(Total = sum(TotalDistance, na.rm = TRUE), 
+          Mean = mean(TotalDistance, na.rm = TRUE))
+
+ggplot(total_distance) +
+geom_line(aes(x=Ymd, y=Total)) +
+labs(title = "Total Distance by Day", x="Date", y="Total Distance")
+```
+
+## 6. Share: Conclusions and Findings
+
+Based on my findings, I would recommend that BellaBeat incorporate several changes to stay competitive with the industry trends presented by their competitor's data collected by users of the FitBit. My recommendations are as follows:
+
+### 6.1 More ZZZ = Better Goal Progress
+
+Relating back to our business task, we are looking for consumer trends to identify potential growth strategies. One key insight found through my analysis (Chart 5.3.1) suggests that sleep is an important factor in achieving daily step goals. This is an important potential growth strategy because BellaBeat can invest more into sleep analysis trackers and app updates to stay competitive. Marketing can be focused towards developing an understanding of why sleep will help the consumer achieve their goals and how BellaBeat's devices and apps can help them do just that.
+
+### 6.2 Go the Distance for Your Health Goals
+
+Chart 5.3.2 highlights the relationship between distance and total step count for the day. While this relationship is well known, we know that users are trying to increase their number of steps to reach the 10,000 steps a day that is recommended. Highlighting the importance of distance, or to create an incentive for distance challenges with badges and rewards on the app can be a potential growth opportunity for marketing and development.
+
+### 6.3 Calories and Wishful Shrinking
+
+We know that calories in and calories out is the way to maintain and monitor fat loss. Looking at Chart 5.3.3, we see that calories burned increases with more steps. Highlighting how steps can aid in weight loss and other benefits will show the consumer the importance of using this device to monitor their health. Incentives and badges for meeting calorie-burn benchmarks through the day could be another growth potential.
+
+### 6.4 An Activity a Day Keeps the Doctor Away
+
+We can see from the charts, 5.3.4-5.3.7 that daily activity levels are important factor in users meeting their goals. By increasing activity levels, users can increase their overall calorie burn, total daily steps and increase the quality of sleep. Developers could create incentives in the app to encourage new activities with rewards for each new activity or number of activities throughout the day.
+
+#### Analysis and Report Prepared by Caitlin Malloch for BellaBeat, March 2022.
+
+![](images/BellaBeat_logo-02.png)
+
+![](images/Google%20Data%20Analytics.jpg)
